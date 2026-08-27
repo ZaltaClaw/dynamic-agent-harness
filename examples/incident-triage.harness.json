@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Incident Triage Harness",
+  "slug": "incident-triage",
+  "organization": "Acme Operations",
+  "description": "A durable incident-response agent with governed tools, parallel specialists, and replayable execution.",
+  "model": {
+    "provider": "runbook",
+    "id": "deterministic-ops-v1",
+    "temperature": 0.2
+  },
+  "tools": [
+    {
+      "name": "catalog.discover",
+      "description": "Discover approved organizational capabilities without loading every schema.",
+      "risk": "read",
+      "enabled": true,
+      "deferred": false
+    },
+    {
+      "name": "context.audit",
+      "description": "Inspect the active context budget and recommend compaction or offloading.",
+      "risk": "read",
+      "enabled": true,
+      "deferred": true
+    },
+    {
+      "name": "blueprint.write",
+      "description": "Persist a generated organizational harness blueprint as a reviewable artifact.",
+      "risk": "write",
+      "enabled": true,
+      "deferred": true
+    }
+  ],
+  "skills": [
+    {
+      "name": "incident-triage",
+      "description": "A procedure for evidence-first incident classification and escalation.",
+      "source": "inline",
+      "enabled": true
+    },
+    {
+      "name": "postmortem-builder",
+      "description": "Turns the final event trace into a structured postmortem outline.",
+      "source": "git",
+      "enabled": true
+    }
+  ],
+  "runtime": {
+    "maxIterations": 24,
+    "durableSessions": true,
+    "eventRetentionDays": 30,
+    "subagents": { "enabled": true, "maxParallel": 3 },
+    "context": {
+      "progressiveDisclosure": true,
+      "largeResultOffload": true,
+      "compaction": { "enabled": true, "thresholdTokens": 48000 }
+    },
+    "approvals": { "requiredFor": ["write", "delete"] },
+    "sandbox": { "provider": "container", "network": "allowlist" },
+    "storage": "jsonl"
+  }
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Harness workspace">
+  <rect x="3" y="3" width="58" height="58" rx="14" fill="#f7f7f5" stroke="#c9c9c3" stroke-width="2"/>
+  <rect x="12" y="14" width="40" height="36" rx="7" fill="#ffffff" stroke="#343638" stroke-width="2"/>
+  <path d="M12 24h40" fill="none" stroke="#343638" stroke-width="2"/>
+  <circle cx="18" cy="19" r="1.5" fill="#777a7d"/>
+  <circle cx="23" cy="19" r="1.5" fill="#777a7d"/>
+  <path d="M20 32h24M20 38h16M20 44h20" fill="none" stroke="#343638" stroke-width="2" stroke-linecap="round"/>
+</svg>
