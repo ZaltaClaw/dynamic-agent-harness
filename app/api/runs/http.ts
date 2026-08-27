@@ -27,7 +27,11 @@ export function localhostRequestBoundary(request: Request): Response | null {
     const origin = request.headers.get("origin");
     if (origin !== null) {
       const originUrl = new URL(origin);
-      if (!loopbackHostnames.has(originUrl.hostname) || origin !== requestUrl.origin) {
+      if (
+        !loopbackHostnames.has(originUrl.hostname)
+        || originUrl.protocol !== requestUrl.protocol
+        || originUrl.port !== requestUrl.port
+      ) {
         return forbiddenRequest();
       }
     }

@@ -73,8 +73,7 @@ describe("POST /api/runs", () => {
     "http://example.test",
     "http://localhost:3111",
     "https://localhost:3110",
-    "http://127.0.0.1:3110",
-  ])("returns a stable 403 when Origin %s does not exactly match", async (origin) => {
+  ])("returns a stable 403 when Origin %s is outside the same loopback endpoint", async (origin) => {
     const response = await createRun(jsonRequest(
       "http://localhost:3110/api/runs",
       JSON.stringify({ prompt: "Investigate the incident", spec: defaultHarnessSpec }),
@@ -235,7 +234,7 @@ describe("POST /api/runs/:runId/approvals", () => {
       jsonRequest(
         `http://127.0.0.1:3110/api/runs/${validRunId}/approvals`,
         validBody,
-        { origin: "http://localhost:3110" },
+        { origin: "http://localhost:3111" },
       ),
       routeContext(validRunId),
     );

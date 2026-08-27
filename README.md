@@ -35,13 +35,13 @@ Open [http://127.0.0.1:3110](http://127.0.0.1:3110). Both `npm run dev` and `npm
 
 Try the complete path:
 
-1. Choose a template or edit the harness controls.
-2. Enter a task in **Live execution**.
-3. Select **Run**.
+1. Open **Configure harness** and choose a template or edit the portable spec.
+2. Return to the conversation and enter a task in the prompt bar.
+3. Start the governed run.
 4. Watch the default spec's two independent worker branches complete in parallel.
-5. Resolve the runtime approval gate.
-6. Inspect the replayable event stream and `.data/artifacts/<run-id>.json`.
-7. Export `<slug>.harness.json` from the top bar.
+5. Resolve the runtime approval gate in the conversation.
+6. Inspect the replayable event stream and `.data/artifacts/<run-id>.json` in **Run inspector**.
+7. Export `<slug>.json` from the configuration or inspector panel.
 
 ## Why a harness exists
 
@@ -62,8 +62,10 @@ For long-running work, reliability moves outside the model. Changing the model, 
 ```text
 app/
   api/runs/                 run, SSE replay, and approval endpoints
-  globals.css               Beautiful UI-inspired tokens and interaction system
-components/studio/          dynamic builder, topology, event stream, approvals
+  globals.css               Beautiful UI token and interaction system
+components/
+  primitives/               vendored/adapted agent rendering primitives
+  site/                     live chat shell, configuration, and run inspector
 lib/harness/
   schema.ts                 portable organizational contract and safety validation
   compiler.ts               portable blueprint + TrueForge AgentSpec translation

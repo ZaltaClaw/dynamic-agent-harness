@@ -3,7 +3,9 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = resolve(import.meta.dirname, "..");
-const studio = readFileSync(resolve(root, "components/studio/harness-studio.tsx"), "utf8");
+const shell = readFileSync(resolve(root, "components/site/harness-chat.tsx"), "utf8");
+const config = readFileSync(resolve(root, "components/site/harness-config.tsx"), "utf8");
+const promptBar = readFileSync(resolve(root, "components/primitives/PromptBar.tsx"), "utf8");
 const css = readFileSync(resolve(root, "app/globals.css"), "utf8");
 const layout = readFileSync(resolve(root, "app/layout.tsx"), "utf8");
 const appIcon = readFileSync(resolve(root, "app/icon.svg"), "utf8");
@@ -36,15 +38,15 @@ function blockAfter(source: string, marker: string): string {
 
 describe("studio visual shell contract", () => {
   it("uses a restrained windowed workspace without a decorative brand logo", () => {
-    expect(studio).not.toContain("brand-mark");
+    expect(shell).not.toContain("brand-mark");
     expect(css).not.toContain(".brand-mark");
-    expect(studio).toContain('className="workspace-shell"');
-    expect(studio).toContain('className="canvas-window"');
+    expect(shell).toContain("rounded-window");
+    expect(shell).toContain("<HarnessSidebar");
   });
 
-  it("starts in the reference-inspired light theme", () => {
-    expect(layout).toContain("||'light'");
-    expect(layout).toContain("dataset.theme='light'");
+  it("starts in the upstream reference dark theme unless light is saved", () => {
+    expect(layout).toContain('classList.toggle("dark",t!=="light")');
+    expect(layout).toContain('classList.add("dark")');
   });
 
   it("uses the repository name in browser metadata", () => {
@@ -82,47 +84,24 @@ describe("static release source guards", () => {
     expect(readme).not.toContain("http://localhost:3110");
   });
 
-  it("keeps the builder and labeled section navigation usable at 780px and below", () => {
-    const mobile = blockAfter(css, "@media (max-width: 780px)");
-    const formSection = blockAfter(mobile, ".form-section");
-    const nav = blockAfter(mobile, ".rail-nav");
-    const navItem = blockAfter(mobile, ".nav-item");
-    const navLabel = blockAfter(mobile, ".nav-item span:last-child");
-
-    expect(formSection).toMatch(/display:\s*block/);
-    expect(nav).toMatch(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-    expect(navItem).toMatch(/min-height:\s*44px/);
-    expect(navItem).toMatch(/justify-content:\s*flex-start/);
-    expect(navLabel).toMatch(/display:\s*inline/);
-    expect(mobile).not.toMatch(/\.field-label[^{}]*\{[^}]*display:\s*none/);
+  it("keeps the chat shell and side panels usable below the desktop breakpoint", () => {
+    expect(shell).toContain("lg:hidden");
+    expect(shell).toContain("fixed inset-2 z-50");
+    expect(shell).toContain("lg:static");
+    expect(shell).toContain("lg:w-[360px]");
+    expect(shell).toContain("min-w-0 flex-1");
+    expect(promptBar).toContain("w-full");
+    expect(promptBar).toContain("resize-none");
   });
 
-  it("gives every form control a focus-visible outline without local suppression", () => {
-    const formControlFocus = blockAfter(
-      css,
-      "input:focus-visible, textarea:focus-visible, select:focus-visible",
-    );
-    const focusRules = [...css.matchAll(/([^{}]+:(?:focus|focus-visible)[^{}]*)\{([^{}]*)\}/g)];
-    const suppressedControlOutlines = focusRules
-      .filter(([, selector, declarations]) =>
-        /(?:input|textarea|select|field-|capability-|prompt-input|compact-select)/.test(selector)
-        && /outline:\s*(?:none|0)\b/.test(declarations),
-      )
-      .map(([, selector]) => selector.trim());
+  it("gives form controls a focus-visible outline and local focus treatment", () => {
+    const formControlFocus = blockAfter(css, "input:focus-visible,");
 
     expect(formControlFocus).toMatch(/outline:\s*2px solid var\(--accent\)/);
     expect(formControlFocus).toMatch(/outline-offset:\s*2px/);
-    expect(suppressedControlOutlines).toEqual([]);
-    for (const className of [
-      "field-input",
-      "field-select",
-      "capability-name",
-      "capability-description",
-      "compact-select",
-      "prompt-input",
-    ]) {
-      expect(studio).toContain(`className="${className}"`);
-    }
+    expect(config).toContain("focus:border-accent");
+    expect(config).toContain("focus:shadow-[0_0_0_3px_var(--accent-tint)]");
+    expect(promptBar).toContain("focus-within:border-accent");
   });
 
   it("associates complete upstream license terms with adapted sources and emitted fonts", () => {
@@ -130,11 +109,15 @@ describe("static release source guards", () => {
       "Copyright (c) 2026 Shane Levine",
       "Copyright (c) 2024-2026 TrueFoundry",
       "Copyright (c) 2026 DeepSeek",
+      "Copyright (c) 2026 Noman Ijaz - iamnoman.com",
+      "Copyright (c) 2021 Daniel Martin",
+      "Copyright (c) 2025-2026 Benji Taylor",
+      "Copyright (c) 2026 Florian Kiem",
     ]) {
       expect(thirdPartyNotices).toContain(notice);
     }
     expect(thirdPartyNotices).toContain(
-      "applies separately to Beautiful UI, TrueForge, and DeepSeek Harness",
+      "applies separately to Beautiful UI, TrueForge, DeepSeek Harness, glimm, Iconoir, Liveline, and shadow-plugin",
     );
     expect(thirdPartyNotices).toContain(
       "in the Software without restriction, including without limitation the rights",

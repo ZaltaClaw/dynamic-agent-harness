@@ -1,6 +1,6 @@
-import HarnessStudio from "@/components/studio/harness-studio";
+import HarnessChat from "@/components/site/harness-chat";
 import { defaultHarnessSpec } from "@/lib/harness/schema";
 
 export default function Home() {
-  return <HarnessStudio initialSpec={defaultHarnessSpec} />;
+  return <HarnessChat initialSpec={defaultHarnessSpec} />;
 }

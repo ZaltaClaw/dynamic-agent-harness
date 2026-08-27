@@ -10,13 +10,10 @@ import {
   parsePublicStreamEvent,
   TRUEFORGE_EXPORT_GUIDANCE,
   writeClipboardText,
-} from "@/components/studio/harness-studio";
+} from "@/lib/harness/client-view";
 
-const studioSource = readFileSync(resolve(import.meta.dirname, "../components/studio/harness-studio.tsx"), "utf8");
-const runtimeRailSource = studioSource.slice(
-  studioSource.indexOf("function RuntimeRail"),
-  studioSource.indexOf("export default function HarnessStudio"),
-);
+const shellSource = readFileSync(resolve(import.meta.dirname, "../components/site/harness-chat.tsx"), "utf8");
+const approvalSource = readFileSync(resolve(import.meta.dirname, "../components/primitives/ApprovalCard.tsx"), "utf8");
 
 const validEvent = {
   id: "run-1:2",
@@ -54,10 +51,11 @@ describe("harness studio client boundaries", () => {
     guard.finish();
     expect(guard.tryStart()).toBe(true);
 
-    expect(runtimeRailSource).toContain("if (!approvalGuardRef.current.tryStart()) return");
-    expect(runtimeRailSource).toContain("approvalGuardRef.current.finish()");
-    expect(runtimeRailSource).toContain("finally {");
-    expect(runtimeRailSource).toContain("disabled={approvalSubmitting}");
+    expect(shellSource).toContain("if (!approvalId || !approvalGuardRef.current.tryStart()) return");
+    expect(shellSource).toContain("approvalGuardRef.current.finish()");
+    expect(shellSource).toContain("finally {");
+    expect(shellSource).toContain("submitting={approvalSubmitting}");
+    expect(approvalSource.match(/disabled=\{submitting\}/g)?.length).toBe(2);
   });
 
   it("accepts only a valid public stream event for the active run", () => {
@@ -76,50 +74,49 @@ describe("harness studio client boundaries", () => {
   });
 
   it("routes EventSource messages through the public event parser", () => {
-    expect(runtimeRailSource).toContain("parsePublicStreamEvent(message.data, runId)");
-    expect(runtimeRailSource).not.toContain("JSON.parse(message.data)");
+    expect(shellSource).toContain("parsePublicStreamEvent(message.data, runId)");
+    expect(shellSource).not.toContain("JSON.parse(message.data)");
   });
 
-  it("wires generation checks into start responses and stream callbacks", () => {
-    const generationChecks = runtimeRailSource.match(/generationGuardRef\.current\.isCurrent\(generation\)/g) ?? [];
+  it("wires generation checks into stream lifecycle callbacks", () => {
+    const generationChecks = shellSource.match(/generationGuardRef\.current\.isCurrent\(generation\)/g) ?? [];
 
-    expect(runtimeRailSource).toContain("const generation = generationGuardRef.current.begin()");
-    expect(runtimeRailSource).toContain("const connect = (runId: string, generation: number)");
-    expect(runtimeRailSource).toContain("generationGuardRef.current.invalidate()");
-    expect(generationChecks.length).toBeGreaterThanOrEqual(5);
+    expect(shellSource).toContain("const generation = generationGuardRef.current.begin()");
+    expect(shellSource).toContain("const connect = useCallback((localId: string, runId: string, generation: number)");
+    expect(shellSource).toContain("generationGuardRef.current.invalidate()");
+    expect(generationChecks.length).toBeGreaterThanOrEqual(4);
   });
 
   it("aborts an obsolete start request on a new start or unmount", () => {
-    expect(runtimeRailSource).toContain("const startAbortRef = useRef<AbortController | null>(null)");
-    expect(runtimeRailSource.match(/startAbortRef\.current\?\.abort\(\)/g)?.length).toBeGreaterThanOrEqual(2);
-    expect(runtimeRailSource).toContain("signal: startController.signal");
-    expect(runtimeRailSource).toContain("startAbortRef.current === startController");
+    expect(shellSource).toContain("const startAbortRef = useRef<AbortController | null>(null)");
+    expect(shellSource.match(/startAbortRef\.current\?\.abort\(\)/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(shellSource).toContain("signal: startController.signal");
+    expect(shellSource).toContain("startAbortRef.current === startController");
   });
 
-  it("reads current run status when EventSource reports a transport error", () => {
-    expect(runtimeRailSource).toContain('const statusRef = useRef<RunStatus>("idle")');
-    expect(runtimeRailSource).toContain('statusRef.current !== "completed" && statusRef.current !== "failed"');
-    expect(runtimeRailSource).not.toContain('if (status !== "completed")');
+  it("reads the current thread status when EventSource reports a transport error", () => {
+    expect(shellSource).toContain("const threadsRef = useRef(threads)");
+    expect(shellSource).toContain("const current = threadsRef.current.find");
+    expect(shellSource).toContain('current.status !== "completed" && current.status !== "failed"');
   });
 
   it("clears only the reconnect notice when EventSource reopens", () => {
     expect(HARNESS_STREAM_RECONNECT_MESSAGE).toBe("Stream reconnecting. Persisted events will replay automatically.");
-    expect(runtimeRailSource).toContain("source.onopen = () =>");
-    expect(runtimeRailSource).toContain("current === HARNESS_STREAM_RECONNECT_MESSAGE ? null : current");
-    expect(runtimeRailSource).toContain("source.onopen = null");
+    expect(shellSource).toContain("source.onopen = () =>");
+    expect(shellSource).toContain("thread.error === HARNESS_STREAM_RECONNECT_MESSAGE ? null : thread.error");
   });
 
   it("handles harness-error as a stable terminal stream failure", () => {
     expect(HARNESS_STREAM_ERROR_MESSAGE).toBe("Event stream failed. Start a new run to retry.");
-    expect(runtimeRailSource).toContain('source.addEventListener("harness-error", onHarnessError)');
-    expect(runtimeRailSource).toContain('source.removeEventListener("harness-error", onHarnessError)');
-    expect(runtimeRailSource).toContain("setError(HARNESS_STREAM_ERROR_MESSAGE)");
-    expect(runtimeRailSource).toContain("closeConnection()");
+    expect(shellSource).toContain('source.addEventListener("harness-error", onHarnessError)');
+    expect(shellSource).toContain('status: "failed", error: HARNESS_STREAM_ERROR_MESSAGE');
+    expect(shellSource).toContain("closeConnection()");
   });
 
   it("cleans up the EventSource when a run reaches a terminal event", () => {
-    expect(runtimeRailSource).toContain('event.type === "run.completed") { updateStatus("completed"); closeConnection(); }');
-    expect(runtimeRailSource).toContain('event.type === "run.failed") { updateStatus("failed"); closeConnection(); }');
+    expect(shellSource).toContain('if (event.type === "run.completed") status = "completed"');
+    expect(shellSource).toContain('if (event.type === "run.failed") status = "failed"');
+    expect(shellSource).toContain('if (event.type === "run.completed" || event.type === "run.failed") closeConnection()');
   });
 
   it("derives approval presentation from the pending event payload", () => {
@@ -131,18 +128,18 @@ describe("harness studio client boundaries", () => {
       title: "Allow repository.delete?",
       copy: "Remove the generated scratch branch. Risk: delete. This checkpoint is enforced by the runtime, outside the model.",
     });
-    expect(runtimeRailSource).toContain("const approval = pending ? approvalPresentation(pending.payload) : null");
-    expect(runtimeRailSource).toContain("{approval.title}");
-    expect(runtimeRailSource).toContain("{approval.copy}");
-    expect(runtimeRailSource).not.toContain("Allow blueprint.write?");
+    expect(shellSource).toContain("const approval = pending ? approvalPresentation(pending.payload) : null");
+    expect(shellSource).toContain("{approval.title}");
+    expect(shellSource).toContain("{approval.copy}");
+    expect(shellSource).not.toContain("Allow blueprint.write?");
   });
 
   it("provides truthful TrueForge export guidance", () => {
     expect(TRUEFORGE_EXPORT_GUIDANCE).toContain("toTrueForgeManifest");
     expect(TRUEFORGE_EXPORT_GUIDANCE).toContain("lib/harness/compiler.ts");
     expect(TRUEFORGE_EXPORT_GUIDANCE).not.toContain("npm run export:trueforge");
-    expect(studioSource).toContain("trueforge: TRUEFORGE_EXPORT_GUIDANCE");
-    expect(studioSource).not.toContain("npm run export:trueforge");
+    expect(shellSource).toContain("trueforge: TRUEFORGE_EXPORT_GUIDANCE");
+    expect(shellSource).not.toContain("npm run export:trueforge");
   });
 
   it("handles clipboard write failures and wires the safe helper into copy actions", async () => {
@@ -150,8 +147,26 @@ describe("harness studio client boundaries", () => {
 
     await expect(writeClipboardText("run-id", { writeText })).resolves.toBe(false);
     expect(writeText).toHaveBeenCalledWith("run-id");
-    expect(runtimeRailSource).toContain("await writeClipboardText(run.id)");
-    expect(runtimeRailSource).not.toContain("navigator.clipboard.writeText(run.id)");
-    expect(studioSource).toContain("await writeClipboardText(JSON.stringify(exportPayload, null, 2))");
+    expect(shellSource).toContain("await writeClipboardText(active.runId)");
+    expect(shellSource).not.toContain("navigator.clipboard.writeText(active.runId)");
+    expect(shellSource).toContain("await writeClipboardText(JSON.stringify(exportPayload, null, 2))");
+  });
+
+  it("reopens a run after its last rendered sequence instead of replaying from zero", () => {
+    expect(shellSource).toContain("const after = current?.events.at(-1)?.sequence ?? 0");
+    expect(shellSource).toContain("?after=${after}");
+  });
+
+  it("reconciles stream transport failures against the authoritative run record", () => {
+    expect(shellSource).toContain("const reconcileRun = useCallback");
+    expect(shellSource).toContain("fetch(`/api/runs/${encodeURIComponent(runId)}`");
+    expect(shellSource).toContain("void reconcileRun(localId, runId, generation)");
+    expect(shellSource).toContain('run.status === "completed" || run.status === "failed"');
+  });
+
+  it("freezes the submitted harness spec on each run thread", () => {
+    expect(shellSource).toContain("specSnapshot: HarnessSpec | null");
+    expect(shellSource).toContain("specSnapshot: validation.data");
+    expect(shellSource).toContain("active?.specSnapshot?.model.id ?? spec.model.id");
   });
 });

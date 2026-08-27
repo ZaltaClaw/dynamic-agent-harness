@@ -11,13 +11,13 @@ export const metadata: Metadata = {
     "A production-minded starter for composing durable, governed, vendor-neutral agent harnesses.",
 };
 
-const themeScript = `(function(){try{var t=localStorage.getItem('oh-theme')||'light';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}})()`;
+const themeScript = `(function(){try{var t=localStorage.getItem("dah-theme");document.documentElement.classList.toggle("dark",t!=="light")}catch(e){document.documentElement.classList.add("dark")}})()`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
-      <body className={`${inter.variable} ${jetbrains.variable}`}>{children}</body>
+      <body className={`${inter.variable} ${jetbrains.variable} font-sans`}>{children}</body>
     </html>
   );
 }

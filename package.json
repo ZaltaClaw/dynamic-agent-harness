@@ -13,8 +13,16 @@
     "url": "https://github.com/ZaltaClaw/dynamic-agent-harness/issues"
   },
   "homepage": "https://github.com/ZaltaClaw/dynamic-agent-harness#readme",
-  "keywords": ["agents", "agent-harness", "long-running-agents", "nextjs", "human-in-the-loop"],
-  "engines": { "node": ">=22" },
+  "keywords": [
+    "agents",
+    "agent-harness",
+    "long-running-agents",
+    "nextjs",
+    "human-in-the-loop"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1 -p 3110",
     "build": "next build",
@@ -26,9 +34,13 @@
     "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
+    "glimm": "0.3.0",
+    "iconoir-react": "7.11.1",
+    "liveline": "0.0.7",
     "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "shadow-plugin": "2.1.0",
     "zod": "4.4.3"
   },
   "devDependencies": {
