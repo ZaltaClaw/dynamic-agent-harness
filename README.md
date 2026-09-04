@@ -12,6 +12,7 @@ The model reasons. The harness keeps the work alive.
 
 ## What works today
 
+- **Outcome-first chat shell:** asks what outcome the harness must support, keeps the inspector and routine worker/tool activity collapsed by default, and presents the verified conformance artifact before execution detail.
 - **Dynamic composition studio:** edit models, tools, skills, runtime limits, context policy, approvals, sandbox policy, and persistence.
 - **Real local runbook adapter:** executes only declared capabilities, honors the configured worker limit, pauses before its declared blueprint write, resumes after allow/deny, writes a real artifact, and finishes with an ordered event trace.
 - **Persistent JSONL event store:** run records and events persist on disk and replay after a cursor. The browser can disconnect and reconnect without losing persisted observations. Active execution is still process-bound; production restart safety needs a durable job adapter.
@@ -35,13 +36,14 @@ Open [http://127.0.0.1:3110](http://127.0.0.1:3110). Both `npm run dev` and `npm
 
 Try the complete path:
 
-1. Open **Configure harness** and choose a template or edit the portable spec.
-2. Return to the conversation and enter a task in the prompt bar.
-3. Start the governed run.
-4. Watch the default spec's two independent worker branches complete in parallel.
-5. Resolve the runtime approval gate in the conversation.
-6. Inspect the replayable event stream and `.data/artifacts/<run-id>.json` in **Run inspector**.
-7. Export `<slug>.json` from the configuration or inspector panel.
+1. Describe the outcome the harness must support; the default spec is ready to validate without setup.
+2. Start the governed run. The inspector stays closed and routine activity stays collapsed unless you choose to inspect it.
+3. Resolve the runtime approval gate in the conversation.
+4. Review the completed outcome and artifact first, then expand execution detail or open **Run inspector** when needed.
+5. Inspect the replayable event stream and `.data/artifacts/<run-id>.json` in **Run inspector**.
+6. Export `<slug>.json` from the configuration or inspector panel.
+
+> **Local adapter boundary:** the deterministic runbook validates harness controls and persists a blueprint. It does not execute the incident, research, or coding task described in the prompt. Provider adapters that perform domain work must make that capability explicit.
 
 ## Why a harness exists
 

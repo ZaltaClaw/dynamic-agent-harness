@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const root = resolve(import.meta.dirname, "..");
 const shell = readFileSync(resolve(root, "components/site/harness-chat.tsx"), "utf8");
+const inspector = readFileSync(resolve(root, "components/site/run-inspector.tsx"), "utf8");
 const config = readFileSync(resolve(root, "components/site/harness-config.tsx"), "utf8");
 const promptBar = readFileSync(resolve(root, "components/primitives/PromptBar.tsx"), "utf8");
 const css = readFileSync(resolve(root, "app/globals.css"), "utf8");
@@ -34,6 +35,39 @@ function blockAfter(source: string, marker: string): string {
     if (depth === 0) return source.slice(openIndex + 1, index);
   }
   throw new Error(`Unclosed CSS block for: ${marker}`);
+}
+
+type Oklch = readonly [lightness: number, chroma: number, hue: number];
+
+function oklchToken(block: string, name: string): Oklch | null {
+  const match = block.match(new RegExp(`--${name}:\\s*oklch\\(([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\)`));
+  return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
+}
+
+function requiredOklchToken(block: string, name: string): Oklch {
+  const value = oklchToken(block, name);
+  if (!value) throw new Error(`Missing opaque OKLCH token: --${name}`);
+  return value;
+}
+
+function relativeLuminance([lightness, chroma, hue]: Oklch): number {
+  const radians = hue * Math.PI / 180;
+  const a = chroma * Math.cos(radians);
+  const b = chroma * Math.sin(radians);
+  const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (lightness - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  const clamp = (channel: number) => Math.min(1, Math.max(0, channel));
+  const red = clamp(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s);
+  const green = clamp(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s);
+  const blue = clamp(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s);
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function contrastRatio(first: Oklch, second: Oklch): number {
+  const lighter = Math.max(relativeLuminance(first), relativeLuminance(second));
+  const darker = Math.min(relativeLuminance(first), relativeLuminance(second));
+  return (lighter + 0.05) / (darker + 0.05);
 }
 
 describe("studio visual shell contract", () => {
@@ -102,6 +136,24 @@ describe("static release source guards", () => {
     expect(config).toContain("focus:border-accent");
     expect(config).toContain("focus:shadow-[0_0_0_3px_var(--accent-tint)]");
     expect(promptBar).toContain("focus-within:border-accent");
+  });
+
+  it("keeps normal success text above WCAG AA contrast in light mode", () => {
+    const lightTokens = blockAfter(css, ":root");
+    const darkTokens = blockAfter(css, "\n.dark");
+    const successInk = oklchToken(lightTokens, "green-ink") ?? requiredOklchToken(lightTokens, "green");
+    const greenTint = requiredOklchToken(lightTokens, "green-tint");
+    const surface = requiredOklchToken(lightTokens, "surface");
+
+    expect(contrastRatio(successInk, greenTint)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(successInk, surface)).toBeGreaterThanOrEqual(4.5);
+    expect(lightTokens).toMatch(/--green-ink:\s*oklch\(/);
+    expect(darkTokens).toContain("--green-ink: var(--green);");
+    expect(css).toContain("--color-green-ink: var(--green-ink);");
+    expect(shell).toContain('outcome.tone === "success" ? "text-green-ink" : "text-ink-2"');
+    expect(shell).toMatch(/view\.artifactPath && <button[^\n]+text-green-ink/);
+    expect(inspector.match(/text-green-ink/g)).toHaveLength(2);
+    expect(inspector).not.toContain("text-green/80");
   });
 
   it("associates complete upstream license terms with adapted sources and emitted fonts", () => {

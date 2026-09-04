@@ -35,12 +35,28 @@ export const HARNESS_STREAM_RECONNECT_MESSAGE = "Stream reconnecting. Persisted 
 export const TRUEFORGE_EXPORT_GUIDANCE = "Call toTrueForgeManifest from lib/harness/compiler.ts to generate a TrueForge manifest.";
 
 export function runPaneForViewport(isDesktop: boolean): "run" | "none" {
-  return isDesktop ? "run" : "none";
+  void isDesktop;
+  return "none";
 }
 
 type ClipboardWriter = { writeText: (text: string) => Promise<void> };
 
 export type ClientRunStatus = "running" | "waiting_for_approval" | "completed" | "failed";
+
+export type CompletionOutcome = {
+  tone: "success" | "neutral";
+  label: "Blueprint ready" | "Run complete";
+};
+
+export function completionOutcome(
+  status: ClientRunStatus | "idle",
+  artifactPath: string | null,
+): CompletionOutcome | null {
+  if (status !== "completed") return null;
+  return artifactPath
+    ? { tone: "success", label: "Blueprint ready" }
+    : { tone: "neutral", label: "Run complete" };
+}
 
 export type ClientRun = {
   id: string;

@@ -14,6 +14,7 @@ import {
   HARNESS_STREAM_RECONNECT_MESSAGE,
   TRUEFORGE_EXPORT_GUIDANCE,
   approvalPresentation,
+  completionOutcome,
   createRunGenerationGuard,
   createSingleFlightGuard,
   deriveRunView,
@@ -43,9 +44,9 @@ type ChatThread = {
 };
 
 const suggestions = [
-  "Triage a production incident and write a reviewable response blueprint",
-  "Research an emerging market with parallel specialists and cited synthesis",
-  "Inspect a codebase, verify a change plan, and stop before the write boundary",
+  "Validate an incident-response harness with a reviewable write boundary",
+  "Validate a market-research harness with parallel workers and cited synthesis",
+  "Validate a code-review harness that stops before writes",
 ];
 
 function makeThread(localId: string): ChatThread {
@@ -69,8 +70,8 @@ function statusLabel(status: RunStatus) {
   return "Ready";
 }
 
-function statusDot(status: RunStatus) {
-  if (status === "completed") return "bg-green";
+function statusDot(status: RunStatus, artifactReady: boolean) {
+  if (status === "completed") return artifactReady ? "bg-green" : "bg-ink-3";
   if (status === "failed") return "bg-red";
   if (status === "waiting_for_approval") return "bg-orange";
   return "bg-accent";
@@ -99,7 +100,9 @@ export default function HarnessChat({ initialSpec }: { initialSpec: HarnessSpec 
   const view = useMemo(() => deriveRunView(active?.events ?? []), [active?.events]);
   const pending = useMemo(() => latestPendingApproval(active?.events ?? []), [active?.events]);
   const approval = pending ? approvalPresentation(pending.payload) : null;
+  const outcome = completionOutcome(active?.status ?? "idle", view.artifactPath);
   const activeModelId = active?.specSnapshot?.model.id ?? spec.model.id;
+  const activityIdentity = `${active?.localId ?? "no-thread"}:${active?.runId ?? "pending-run"}`;
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -310,11 +313,11 @@ export default function HarnessChat({ initialSpec }: { initialSpec: HarnessSpec 
           <div className="flex min-w-0 flex-1 items-center">
             <button type="button" aria-label="Start new run" onClick={createNewRun} className="mr-1 flex size-11 shrink-0 items-center justify-center rounded-[7px] text-ink-3 hover:bg-hover hover:text-ink lg:hidden lg:size-8"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 20l4.2-1 10.7-10.7a2 2 0 0 0-2.8-2.8L5.4 16.2zM14.7 6.9l2.8 2.8"/></svg></button>
             <div className="flex h-7 min-w-0 max-w-[320px] items-center gap-2 rounded-[7px] bg-hover px-2.5 text-[12.5px] text-ink">
-              <span className={`size-1.5 shrink-0 rounded-full ${statusDot(active?.status ?? "idle")}`} style={active?.status === "running" ? { animation: "pulse 1.3s ease-in-out infinite" } : undefined} />
+              <span className={`size-1.5 shrink-0 rounded-full ${statusDot(active?.status ?? "idle", Boolean(view.artifactPath))}`} style={active?.status === "running" ? { animation: "pulse 1.3s ease-in-out infinite" } : undefined} />
               <span className="truncate">{active?.title ?? "New governed run"}</span>
             </div>
           </div>
-          {active?.runId && <span role="status" aria-live="polite" aria-atomic="true" className="hidden h-6 items-center gap-1.5 rounded-full bg-inset px-2 text-[10px] font-medium text-ink-2 shadow-hairline sm:inline-flex"><span className={`size-1.5 rounded-full ${statusDot(active.status)}`} />{statusLabel(active.status)}</span>}
+          {active?.runId && <span role="status" aria-live="polite" aria-atomic="true" className="hidden h-6 items-center gap-1.5 rounded-full bg-inset px-2 text-[10px] font-medium text-ink-2 shadow-hairline sm:inline-flex"><span className={`size-1.5 rounded-full ${statusDot(active.status, Boolean(view.artifactPath))}`} />{statusLabel(active.status)}</span>}
           {active?.runId && <button type="button" onClick={() => setPane((current) => current === "run" ? "none" : "run")} className="h-11 rounded-[7px] px-2 text-[11.5px] font-medium text-ink-2 hover:bg-hover hover:text-ink lg:h-7">Inspector</button>}
           <button type="button" aria-label="Configure harness" onClick={() => setPane((current) => current === "config" ? "none" : "config")} className="flex size-11 items-center justify-center rounded-[7px] text-ink-3 hover:bg-hover hover:text-ink lg:size-7"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></svg></button>
         </header>
@@ -323,9 +326,9 @@ export default function HarnessChat({ initialSpec }: { initialSpec: HarnessSpec 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto flex min-h-full w-full max-w-[720px] flex-col justify-center px-5 py-16 sm:px-8">
               <div className="text-[13px] font-medium text-ink-3">Dynamic Agent Harness</div>
-              <h1 className="mt-1.5 text-[28px] font-[470] tracking-[-0.035em] text-ink sm:text-[32px]">What should the harness do?</h1>
-              <p className="mt-2 max-w-[590px] text-[13px] leading-relaxed text-ink-3">Start a real replayable run. The backend will fan out isolated workers, invoke governed tools, pause at write boundaries, and persist an artifact.</p>
-              <div className="mt-7"><PromptBar tall modelLabel={activeModelId} disabled={!validation.success} onConfigure={() => setPane("config")} onSend={startRun} /></div>
+              <h1 className="mt-1.5 text-[28px] font-[470] tracking-[-0.035em] text-ink sm:text-[32px]">What should this harness validate?</h1>
+              <p className="mt-2 max-w-[620px] text-[13px] leading-relaxed text-ink-3">Describe the target outcome. The local conformance run checks orchestration, approval, replay, and artifact persistence; it does not execute the requested task.</p>
+              <div className="mt-7"><PromptBar tall placeholder="Describe the outcome this harness must support…" modelLabel={activeModelId} disabled={!validation.success} onConfigure={() => setPane("config")} onSend={startRun} /></div>
               {!validation.success && <button type="button" onClick={() => setPane("config")} className="mt-2 text-left text-[11px] text-red hover:underline">Fix the harness spec: {validationMessage}</button>}
               <div className="mt-6 text-[11px] font-medium text-ink-3">Try a governed workflow</div>
               <div className="mt-2 grid gap-1">
@@ -342,8 +345,26 @@ export default function HarnessChat({ initialSpec }: { initialSpec: HarnessSpec 
               <div className="mx-auto w-full max-w-[720px] px-5 py-8 sm:px-8 sm:py-11">
                 <div className="flex justify-end"><div className="max-w-[82%] rounded-[10px] bg-inset px-3.5 py-2.5 text-[13px] leading-relaxed text-ink shadow-hairline">{active.prompt}</div></div>
                 <article className="mt-8 flex flex-col gap-5">
-                  <ThinkingState rows={view.thinkingRows} working={running} label="Running isolated workers" doneLabel={terminal ? statusLabel(active.status) : "Governed reasoning complete"} />
-                  <ToolChips rows={view.toolRows} />
+                  {outcome && view.message && (
+                    <section
+                      aria-label="Run outcome"
+                      data-outcome-tone={outcome.tone}
+                      className={`flex w-full max-w-[630px] flex-col gap-3 rounded-card px-4 py-3.5 shadow-hairline ${outcome.tone === "success" ? "bg-green-tint" : "bg-inset"}`}
+                    >
+                      <div className={`flex items-center gap-2 text-[12px] font-medium ${outcome.tone === "success" ? "text-green-ink" : "text-ink-2"}`}>
+                        {outcome.tone === "success" ? (
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 6 9 17l-5-5" /></svg>
+                        ) : (
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>
+                        )}
+                        <span>{outcome.label}</span>
+                      </div>
+                      <StreamingText text={view.message} animate fill />
+                      {view.artifactPath && <button type="button" onClick={copyArtifact} className="flex w-fit items-center gap-2 rounded-control bg-surface px-2.5 py-2 text-[11.5px] font-medium text-green-ink shadow-hairline hover:brightness-95"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>Copy artifact path · {view.artifactPath}</button>}
+                    </section>
+                  )}
+                  <ThinkingState key={`thinking:${activityIdentity}`} rows={view.thinkingRows} working={running} label="Running isolated workers" doneLabel={terminal ? statusLabel(active.status) : "Governed reasoning complete"} />
+                  <ToolChips key={`tools:${activityIdentity}`} rows={view.toolRows} />
                   {pending && approval && (
                     <ApprovalCard
                       title={approval.title}
@@ -355,10 +376,8 @@ export default function HarnessChat({ initialSpec }: { initialSpec: HarnessSpec 
                       onDeny={() => resolveApproval("deny")}
                     />
                   )}
-                  {view.message && <StreamingText text={view.message} animate fill />}
                   {active.error && active.error !== HARNESS_STREAM_RECONNECT_MESSAGE && <div role="alert" className="max-w-[630px] rounded-card bg-red-tint px-3 py-2.5 text-[12px] leading-relaxed text-red shadow-hairline">{active.error}</div>}
                   {active.error === HARNESS_STREAM_RECONNECT_MESSAGE && <div role="status" className="text-[11px] text-ink-3">{active.error}</div>}
-                  {view.artifactPath && <button type="button" onClick={copyArtifact} className="flex w-fit items-center gap-2 rounded-control bg-green-tint px-2.5 py-2 text-[11.5px] font-medium text-green shadow-hairline hover:brightness-95"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M14 2H6a2 2 0 0 0-2 2v16h16V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>Artifact · {view.artifactPath}</button>}
                 </article>
               </div>
             </div>

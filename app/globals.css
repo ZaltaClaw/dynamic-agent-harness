@@ -41,6 +41,7 @@
 
   /* semantic */
   --green: oklch(0.603 0.155 150.883);
+  --green-ink: oklch(0.5 0.155 150.883);
   --green-tint: oklch(0.958 0.017 159.118);
   --orange: oklch(0.689 0.179 49.902);
   --orange-tint: oklch(0.964 0.021 67.581);
@@ -87,6 +88,7 @@
   --accent-tint: oklch(0.68 0.173 253.301 / 0.16);
 
   --green: oklch(0.705 0.154 153.814);
+  --green-ink: var(--green);
   --green-tint: oklch(0.705 0.154 153.814 / 0.14);
   --orange: oklch(0.746 0.156 55.642);
   --orange-tint: oklch(0.746 0.156 55.642 / 0.14);
@@ -132,6 +134,7 @@
   --color-accent-ink: var(--accent-ink);
   --color-accent-tint: var(--accent-tint);
   --color-green: var(--green);
+  --color-green-ink: var(--green-ink);
   --color-green-tint: var(--green-tint);
   --color-orange: var(--orange);
   --color-orange-tint: var(--orange-tint);

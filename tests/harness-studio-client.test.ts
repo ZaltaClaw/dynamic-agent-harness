@@ -1,8 +1,14 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import ThinkingState from "@/components/primitives/ThinkingState";
+import ToolChips from "@/components/primitives/ToolChips";
+import RunInspector from "@/components/site/run-inspector";
 import {
   approvalPresentation,
+  completionOutcome,
   createRunGenerationGuard,
   createSingleFlightGuard,
   HARNESS_STREAM_ERROR_MESSAGE,
@@ -168,5 +174,94 @@ describe("harness studio client boundaries", () => {
     expect(shellSource).toContain("specSnapshot: HarnessSpec | null");
     expect(shellSource).toContain("specSnapshot: validation.data");
     expect(shellSource).toContain("active?.specSnapshot?.model.id ?? spec.model.id");
+  });
+
+  it("keeps routine worker and tool activity collapsed by default", () => {
+    const thinking = renderToStaticMarkup(createElement(ThinkingState, {
+      rows: [{ id: "scout", label: "Scout", detail: "Checked capabilities", status: "completed" }],
+      working: false,
+    }));
+    const tools = renderToStaticMarkup(createElement(ToolChips, {
+      rows: [{ id: "scout:catalog", name: "catalog", detail: "Checked capabilities", risk: "read", status: "completed" }],
+    }));
+
+    expect(thinking).toContain('aria-expanded="false"');
+    expect(thinking).toContain('aria-label="Governed reasoning complete"');
+    expect(thinking).not.toContain("Checked capabilities");
+    expect(tools).toContain('aria-expanded="false"');
+    expect(tools).not.toContain("catalog");
+    expect(tools.match(/<button/g)).toHaveLength(1);
+  });
+
+  it("remounts expandable activity for each active thread and durable run", () => {
+    expect(shellSource).toContain('const activityIdentity = `${active?.localId ?? "no-thread"}:${active?.runId ?? "pending-run"}`');
+    expect(shellSource).toContain('key={`thinking:${activityIdentity}`}');
+    expect(shellSource).toContain('key={`tools:${activityIdentity}`}');
+  });
+
+  it("uses a neutral outcome treatment when a completed run produced no artifact", () => {
+    expect(completionOutcome("completed", null)).toEqual({
+      tone: "neutral",
+      label: "Run complete",
+    });
+    expect(completionOutcome("completed", "artifacts/run-1.json")).toEqual({
+      tone: "success",
+      label: "Blueprint ready",
+    });
+  });
+
+  it("does not show a success-green completion status when the write was denied", () => {
+    expect(shellSource).toContain("function statusDot(status: RunStatus, artifactReady: boolean)");
+    expect(shellSource).toContain('if (status === "completed") return artifactReady ? "bg-green" : "bg-ink-3"');
+    expect(shellSource.match(/statusDot\(active(?:\?\.|\.)status \?\? "idle", Boolean\(view\.artifactPath\)\)/g)).toHaveLength(1);
+    expect(shellSource).toContain("statusDot(active.status, Boolean(view.artifactPath))");
+  });
+
+  it("renders completed Inspector status and terminal events based on artifact presence", () => {
+    const renderCompletedInspector = (artifactPath: string | null) => renderToStaticMarkup(createElement(RunInspector, {
+      runId: "run-1",
+      status: "completed",
+      events: [{
+        id: "run-1:3",
+        runId: "run-1",
+        sequence: 3,
+        type: "run.completed",
+        timestamp: "2026-08-27T00:00:00.000Z",
+        payload: artifactPath ? { artifactPath, summary: "Artifact persisted." } : { summary: "Run completed without a write." },
+      }],
+      error: null,
+      artifactPath,
+      onClose: vi.fn(),
+      onCopyRunId: vi.fn(),
+      onCopyArtifact: vi.fn(),
+      onExport: vi.fn(),
+    }));
+
+    const withoutArtifact = renderCompletedInspector(null);
+    const withArtifact = renderCompletedInspector("artifacts/run-1.json");
+
+    expect(withoutArtifact).toContain('size-1.5 rounded-full bg-ink-3"></span>completed');
+    expect(withoutArtifact).toContain("ring-2 ring-page bg-ink-3");
+    expect(withoutArtifact).not.toContain('size-1.5 rounded-full bg-green"></span>completed');
+    expect(withArtifact).toContain('size-1.5 rounded-full bg-green"></span>completed');
+    expect(withArtifact).toContain("ring-2 ring-page bg-green");
+  });
+
+  it("frames the local adapter as harness conformance instead of task execution", () => {
+    expect(shellSource).toContain("What should this harness validate?");
+    expect(shellSource).toContain("The local conformance run checks");
+    expect(shellSource).toContain("it does not execute the requested task");
+    expect(shellSource).toContain('placeholder="Describe the outcome this harness must support…"');
+    expect(shellSource).toContain("Validate an incident-response harness");
+  });
+
+  it("renders a completed outcome before optional execution detail", () => {
+    const outcomeIndex = shellSource.indexOf("{outcome && view.message &&");
+    const activityIndex = shellSource.indexOf("<ThinkingState");
+
+    expect(shellSource).toContain('aria-label="Run outcome"');
+    expect(outcomeIndex).toBeGreaterThan(-1);
+    expect(activityIndex).toBeGreaterThan(-1);
+    expect(outcomeIndex).toBeLessThan(activityIndex);
   });
 });

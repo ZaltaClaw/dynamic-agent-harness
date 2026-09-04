@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  completionOutcome,
   deriveRunView,
   latestPendingApproval,
   mergeStreamEvent,
@@ -25,6 +26,12 @@ function event(
 }
 
 describe("live harness view model", () => {
+  it("withholds completion presentation until the run authoritatively completes", () => {
+    expect(completionOutcome("running", "artifacts/run-1.json")).toBeNull();
+    expect(completionOutcome("waiting_for_approval", null)).toBeNull();
+    expect(completionOutcome("failed", "artifacts/run-1.json")).toBeNull();
+  });
+
   it("deduplicates replayed events and keeps sequence order", () => {
     const first = event(2, "tool.started", { tool: "catalog.discover" });
     const earlier = event(1, "run.started", { summary: "Started" });
@@ -70,9 +77,9 @@ describe("live harness view model", () => {
     expect(latestPendingApproval([required, resolved])).toBeNull();
   });
 
-  it("keeps new mobile runs chat-first while opening the desktop inspector", () => {
+  it("keeps new runs outcome-first until the inspector is explicitly requested", () => {
     expect(runPaneForViewport(false)).toBe("none");
-    expect(runPaneForViewport(true)).toBe("run");
+    expect(runPaneForViewport(true)).toBe("none");
   });
 
   it("unwraps the API data envelope and rejects malformed run records", () => {
